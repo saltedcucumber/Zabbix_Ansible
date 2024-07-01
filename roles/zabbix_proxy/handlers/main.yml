@@ -1,0 +1,8 @@
+---
+- name: check service
+  command: systemctl is-active zabbix-proxy.service
+  register: zabbix_status
+  ignore_errors: true
+- name: status output
+  debug:
+    var: zabbix_status

@@ -1,0 +1,101 @@
+---
+- name: become_method sudo  
+  block:
+   - name: install packages
+     apt:
+       name:
+         - gnupg2
+         - wget
+         - vim
+         - python3-psycopg2
+         - acl
+       update_cache: yes
+
+   - name: add postgresql repository
+     shell: sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+
+   - name: download repository key
+     shell: wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+
+   - name: update
+     apt:
+       update_cache: yes
+
+   - name: install postgresql 16
+     apt:
+       name:
+         - postgresql-16
+         - postgresql-contrib
+
+   - name: start service postgresql
+     service:
+       name: postgresql
+       enabled: yes
+
+   - name: install zabbix-server
+     apt:
+       name:
+         - zabbix-server-pgsql
+         - zabbix-frontend-php
+         - php8.2-fpm
+         - zabbix-nginx-conf
+         - zabbix-sql-scripts
+         - zabbix-agent
+
+  become: true
+  become_method: sudo
+
+- name: become user postgres
+  become: true
+  become_user: postgres
+  block:
+    - name: create user
+      community.postgresql.postgresql_user:
+        name: zabbix
+        password: zabbix
+
+    - name: create db
+      community.postgresql.postgresql_db:
+        name: zabbix-proxy
+        owner: zabbix
+
+- name: become method sudo
+  block: 
+    - name: inport initial schema
+      shell: cat /usr/share/zabbix-sql-scripts/postgresql/server.sql | sudo -u zabbix psql zabbix-proxy
+
+    - name: copy config
+      copy:
+        src: zabbix_server.conf
+        dest: /etc/zabbix/zabbix_server.conf
+    
+    - name: stop Apache
+      service:
+        name: apache2
+        state: stopped
+      ignore_errors: yes
+      
+    - name: restart zabbix_server
+      service:
+        name: zabbix-server
+        state: restarted
+        enabled: true
+
+    - name: restart zabbix_agent
+      service:
+        name: zabbix-agent 
+        state: restarted
+        enabled: true   
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+        enabled: true
+
+    - name: restart php8.2-fpm
+      service:
+        name: php8.2-fpm
+        state: restarted
+        enabled: true
+  become: true
+  become_method: sudo      

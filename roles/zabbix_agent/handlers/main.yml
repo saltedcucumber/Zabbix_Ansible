@@ -1,0 +1,7 @@
+---
+- name: check service
+  command: systemctl is-active zabbix-agent.service
+  register: zabbix_status
+- name: status output
+  debug:
+    var: zabbix_status

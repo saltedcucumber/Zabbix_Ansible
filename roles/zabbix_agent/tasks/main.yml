@@ -1,0 +1,20 @@
+---
+- name: become_method sudo
+  block:
+    - name: install zabbix agent
+      apt:
+        name: zabbix-agent 
+    - name: copy config
+      ansible.builtin.copy:
+        src: zabbix_agentd.conf
+        dest: /etc/zabbix/zabbix_agentd.conf
+    - name: restart zabbix_agent
+      ansible.builtin.service:
+        name: zabbix-agent
+        state: restarted
+        enabled: true
+      notify:
+        - check service
+        - status output
+  become: true
+  become_method: sudo   
